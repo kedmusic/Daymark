@@ -32,6 +32,8 @@ import com.daymark.app.ui.theme.DaymarkTheme
 import com.daymark.app.ui.theme.Muted
 import com.daymark.app.ui.theme.Purple
 
+import com.daymark.app.ui.screens.home.HomeScreen
+
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Home : Screen("home", "Home", Icons.Default.Home)
     object Calendar : Screen("calendar", "Calendar", Icons.Default.CalendarMonth)
@@ -82,7 +84,11 @@ fun AppNavGraph(
         ) {
             NavigationRoutes.forEach { screen ->
                 composable(screen.route) {
-                    PlaceholderScreen(title = screen.title)
+                    if (screen == Screen.Home) {
+                        HomeScreen()
+                    } else {
+                        PlaceholderScreen(title = screen.title)
+                    }
                 }
             }
         }
