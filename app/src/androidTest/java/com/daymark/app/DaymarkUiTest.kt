@@ -1,7 +1,7 @@
 package com.daymark.app
 
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasHeight
+
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
