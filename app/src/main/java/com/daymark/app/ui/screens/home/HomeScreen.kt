@@ -40,7 +40,11 @@ import java.time.LocalDate
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel = viewModel()
+    viewModel: HomeViewModel = viewModel(),
+    onWishClick: (Person) -> Unit = {},
+    onPrepareWishClick: () -> Unit = {},
+    pendingSnackbarMessage: String? = null,
+    onPendingSnackbarConsumed: () -> Unit = {}
 ) {
     val selectedCategory by viewModel.selectedCategory.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
@@ -56,6 +60,12 @@ fun HomeScreen(
             viewModel.clearSnackbar()
         }
     }
+    LaunchedEffect(pendingSnackbarMessage) {
+        pendingSnackbarMessage?.let { message ->
+            snackbarHostState.showSnackbar(message)
+            onPendingSnackbarConsumed()
+        }
+    }
 
     HomeScreenContent(
         uiState = uiState,
@@ -63,6 +73,8 @@ fun HomeScreen(
         onCategorySelected = { viewModel.selectCategory(it) },
         onEventClick = { viewModel.onEventClicked(it) },
         onQuickActionClick = { action, person -> viewModel.onQuickActionClicked(action, person) },
+        onWishClick = onWishClick,
+        onPrepareWishClick = onPrepareWishClick,
         onAddClick = {
             coroutineScope.launch {
                 snackbarHostState.showSnackbar("Add person clicked")
@@ -82,7 +94,9 @@ fun HomeScreenContent(
     onQuickActionClick: (String, Person) -> Unit,
     onAddClick: () -> Unit,
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onWishClick: (Person) -> Unit = {},
+    onPrepareWishClick: () -> Unit = {}
 ) {
     val listState = rememberLazyListState()
 
@@ -116,7 +130,10 @@ fun HomeScreenContent(
                 GreetingHeader()
             }
             item {
-                HeroCard(upcomingCount = uiState.totalUpcomingMoments)
+                HeroCard(
+                    upcomingCount = uiState.totalUpcomingMoments,
+                    onPrepareWish = onPrepareWishClick
+                )
             }
             item {
                 CategoryFilterRow(
@@ -137,7 +154,8 @@ fun HomeScreenContent(
                         person = person,
                         today = today,
                         onCardClick = { onEventClick(person) },
-                        onQuickAction = { action -> onQuickActionClick(action, person) }
+                        onQuickAction = { action -> onQuickActionClick(action, person) },
+                        onWishClick = { onWishClick(person) }
                     )
                 }
             }

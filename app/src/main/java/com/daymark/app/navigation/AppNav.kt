@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,8 +32,18 @@ import androidx.navigation.compose.rememberNavController
 import com.daymark.app.ui.theme.DaymarkTheme
 import com.daymark.app.ui.theme.Muted
 import com.daymark.app.ui.theme.Purple
-
 import com.daymark.app.ui.screens.home.HomeScreen
+import com.daymark.app.data.FakeData
+import com.daymark.app.model.Person
+import com.daymark.app.ui.screens.wish.WishPersonPickerScreen
+import com.daymark.app.ui.screens.wish.WishScreen
+
+const val WishPickerRoute = "wish-picker"
+const val WishRoute = "wish/{personId}"
+private const val WishReadySnackbarKey = "wish_ready_snackbar"
+
+private fun wishRoute(person: Person): String =
+    "wish/${android.net.Uri.encode(person.id)}"
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
     object Home : Screen("home", "Home", Icons.Default.Home)
@@ -57,24 +68,27 @@ fun AppNavGraph(
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route ?: Screen.Home.route
+    val showBottomBar = currentRoute != WishRoute && currentRoute != WishPickerRoute
 
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            DaymarkBottomBar(
-                currentRoute = currentRoute,
-                onTabSelected = { screen ->
-                    if (currentRoute != screen.route) {
-                        navController.navigate(screen.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+            if (showBottomBar) {
+                DaymarkBottomBar(
+                    currentRoute = currentRoute,
+                    onTabSelected = { screen ->
+                        if (currentRoute != screen.route) {
+                            navController.navigate(screen.route) {
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
+                                launchSingleTop = true
+                                restoreState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
                         }
                     }
-                }
-            )
+                )
+            }
         }
     ) { innerPadding ->
         NavHost(
@@ -83,12 +97,60 @@ fun AppNavGraph(
             modifier = Modifier.padding(innerPadding)
         ) {
             NavigationRoutes.forEach { screen ->
-                composable(screen.route) {
+                composable(screen.route) { backStackEntry ->
                     if (screen == Screen.Home) {
-                        HomeScreen()
+                        val pendingSnackbar by backStackEntry.savedStateHandle
+                            .getStateFlow<String?>(WishReadySnackbarKey, null)
+                            .collectAsState()
+                        HomeScreen(
+                            onWishClick = { person ->
+                                navController.navigate(wishRoute(person))
+                            },
+                            onPrepareWishClick = {
+                                navController.navigate(WishPickerRoute)
+                            },
+                            pendingSnackbarMessage = pendingSnackbar,
+                            onPendingSnackbarConsumed = {
+                                backStackEntry.savedStateHandle[WishReadySnackbarKey] = null
+                            }
+                        )
                     } else {
                         PlaceholderScreen(title = screen.title)
                     }
+                }
+            }
+            composable(WishPickerRoute) {
+                WishPersonPickerScreen(
+                    onPersonSelected = { person ->
+                        navController.navigate(wishRoute(person)) {
+                            popUpTo(WishPickerRoute) { inclusive = true }
+                        }
+                    },
+                    onCancel = { navController.popBackStack() }
+                )
+            }
+            composable(WishRoute) { backStackEntry ->
+                val personId = backStackEntry.arguments?.getString("personId")
+                val person = FakeData.samplePeople.firstOrNull { it.id == personId }
+                if (person != null) {
+                    WishScreen(
+                        person = person,
+                        onCancel = { navController.popBackStack() },
+                        onShareSheetClosed = {
+                            navController.getBackStackEntry(Screen.Home.route)
+                                .savedStateHandle[WishReadySnackbarKey] = "Wish ready to send"
+                            navController.popBackStack(Screen.Home.route, inclusive = false)
+                        }
+                    )
+                } else {
+                    WishPersonPickerScreen(
+                        onPersonSelected = { selectedPerson ->
+                            navController.navigate(wishRoute(selectedPerson)) {
+                                popUpTo(WishRoute) { inclusive = true }
+                            }
+                        },
+                        onCancel = { navController.popBackStack() }
+                    )
                 }
             }
         }

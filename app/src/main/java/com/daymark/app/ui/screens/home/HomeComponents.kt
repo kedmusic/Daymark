@@ -19,6 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Message
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -27,6 +29,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +73,8 @@ fun GreetingHeader(
 @Composable
 fun HeroCard(
     upcomingCount: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPrepareWish: () -> Unit = {}
 ) {
     Card(
         modifier = modifier
@@ -102,6 +106,18 @@ fun HeroCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.9f)
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onPrepareWish,
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Purple
+                )
+            ) {
+                Text("Prepare wish")
+            }
         }
     }
 }
@@ -139,6 +155,7 @@ fun EventCard(
     today: LocalDate,
     onCardClick: () -> Unit,
     onQuickAction: (String) -> Unit,
+    onWishClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val days = person.daysUntil(today)
@@ -161,88 +178,111 @@ fun EventCard(
         colors = CardDefaults.cardColors(containerColor = containerColor),
         border = androidx.compose.foundation.BorderStroke(1.dp, borderColor)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar
-            Box(
+        Column {
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(Purple.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = person.avatarInitials,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Purple,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            // Details
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Purple.copy(alpha = 0.15f)),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = person.name,
+                        text = person.avatarInitials,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
+                        color = Purple,
+                        fontWeight = FontWeight.Bold
                     )
-                    if (person.isPrivate) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = "Private event",
-                            tint = Muted,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .testTag("lock_icon")
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = person.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        if (person.isPrivate) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = "Private event",
+                                tint = Muted,
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .testTag("lock_icon")
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "${person.eventTitle} • $daysText",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (isToday) Purple else Muted,
+                        fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
+                    )
+                    TextButton(
+                        onClick = onWishClick,
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 40.dp)
+                            .testTag("wish_ready_${person.id}")
+                    ) {
+                        Text(
+                            text = "Wish ready",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Muted
                         )
                     }
                 }
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "${person.eventTitle} • $daysText",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (isToday) Purple else Muted,
-                    fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal
-                )
-            }
 
-            // Quick actions (Call / Message)
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                IconButton(
-                    onClick = { onQuickAction("Call") },
-                    modifier = Modifier.size(48.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Call,
-                        contentDescription = "Call ${person.name}",
-                        tint = Purple
-                    )
+                    IconButton(
+                        onClick = { onQuickAction("Call") },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Call,
+                            contentDescription = "Call ${person.name}",
+                            tint = Purple
+                        )
+                    }
+                    IconButton(
+                        onClick = { onQuickAction("Message") },
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Message,
+                            contentDescription = "Message ${person.name}",
+                            tint = Purple
+                        )
+                    }
                 }
-                IconButton(
-                    onClick = { onQuickAction("Message") },
-                    modifier = Modifier.size(48.dp)
+            }
+            if (isToday) {
+                Button(
+                    onClick = onWishClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                        .height(48.dp)
+                        .testTag("wish_button_${person.id}"),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Purple)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Message,
-                        contentDescription = "Message ${person.name}",
-                        tint = Purple
-                    )
+                    Text("Wish")
                 }
             }
         }
